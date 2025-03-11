@@ -18,10 +18,11 @@ import {
   Badge,
   Pagination,
 } from "@windmill/react-ui";
+import axios from "axios";
 
 const recentappointments = [
   {
-    req_id:"PR101",
+    req_id: "PR101",
     parent_id: "PA101",
     parent_name: "John Doe",
     student_rollno: "123456",
@@ -31,7 +32,7 @@ const recentappointments = [
     visit_status: "1",
   },
   {
-    req_id:"PR102",
+    req_id: "PR102",
     parent_id: "PA102",
     parent_name: "Jane Doe",
     student_rollno: "123457",
@@ -39,22 +40,77 @@ const recentappointments = [
     booked_time: "25-02-2025 01:00 PM",
     visit_purpose: "General Meeting",
     visit_status: "0",
-  }
-]
+  },
+];
 
 function Dashboard() {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
+  const [cardData, setCardData] = useState([]);
 
   const resultsPerPage = 5;
   const totalResults = recentappointments.length;
+
+  const token = localStorage.getItem("token");
+  const parent_id = localStorage.getItem("userid");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.post(
+          "http://localhost:8080/protected/getparentcardata",
+          {
+            parent_id,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setCardData(response.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const fetchweekData = async () => {
+      try {
+        const response = await axios.post(
+          "http://localhost:8080/protected/getparentwiseappointments",
+          {
+            parent_id,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (response.data != null) {
+          setData(response.data);
+        } else {
+          setData([]);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchweekData();
+  }, []);
 
   function onPageChange(p) {
     setPage(p);
   }
   useEffect(() => {
     setData(
-      recentappointments.slice((page - 1) * resultsPerPage, page * resultsPerPage)
+      recentappointments.slice(
+        (page - 1) * resultsPerPage,
+        page * resultsPerPage
+      )
     );
   }, [page]);
 
@@ -63,7 +119,7 @@ function Dashboard() {
       <PageTitle>Home Page</PageTitle>
 
       <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
-        <InfoCard title="Total Appointments" value="6">
+        <InfoCard title="Total Appointments" value={cardData.total_request}>
           <RoundIcon
             icon={IoMdCodeWorking}
             iconColorClass="text-orange-500 dark:text-orange-100"
@@ -72,7 +128,10 @@ function Dashboard() {
           />
         </InfoCard>
 
-        <InfoCard title="Pending Appointments" value="2">
+        <InfoCard
+          title="Pending Appointments"
+          value={cardData.total_pending_request}
+        >
           <RoundIcon
             icon={MdOutlinePendingActions}
             iconColorClass="text-green-500 dark:text-green-100"
@@ -81,7 +140,10 @@ function Dashboard() {
           />
         </InfoCard>
 
-        <InfoCard title="Approved Appointments" value="3">
+        <InfoCard
+          title="Approved Appointments"
+          value={cardData.approved_request}
+        >
           <RoundIcon
             icon={RiProgress6Line}
             iconColorClass="text-blue-500 dark:text-blue-100"
@@ -90,7 +152,10 @@ function Dashboard() {
           />
         </InfoCard>
 
-        <InfoCard title="Completed Appointments" value="1">
+        <InfoCard
+          title="Completed Appointments"
+          value={cardData.completed_request}
+        >
           <RoundIcon
             icon={FaRegCheckCircle}
             iconColorClass="text-teal-500 dark:text-teal-100"
@@ -125,11 +190,11 @@ function Dashboard() {
                 <TableCell>{user.student_rollno}</TableCell>
                 <TableCell>{user.student_name}</TableCell>
                 <TableCell>{user.booked_time}</TableCell>
-                <TableCell>{user.visit_purpose}</TableCell>
+                <TableCell>{user.purpose}</TableCell>
                 <TableCell>
-                  {user.visit_status === "1" ? (
+                  {user.status === "1" ? (
                     <Badge type="success">Approved</Badge>
-                  ) : user.visit_status === "2" ? (
+                  ) : user.status === "2" ? (
                     <Badge type="danger">Rejected</Badge>
                   ) : (
                     <Badge type="warning">Pending</Badge>

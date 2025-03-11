@@ -3,13 +3,13 @@ import { Input, Label, Button, Select } from "@windmill/react-ui";
 import { FaUser } from "react-icons/fa";
 import PageTitle from "../../components/Typography/PageTitle";
 import { useHistory } from "react-router-dom";
+import axios from "axios";
 
 function Addnewusers() {
   const [formData, setFormData] = useState({
     userid: "",
     username: "",
     email: "",
-    mobile: "",
     role: "",
   });
   const history = useHistory();
@@ -23,15 +23,32 @@ function Addnewusers() {
     }));
   };
 
+  const token = localStorage.getItem("token");
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
-    history.push("/app/manage-users");
+    try{
+      const response = await axios.post("http://localhost:8080/protected/addusers", {
+        user_id: formData.userid,
+        user_name: formData.username,
+        email: formData.email,
+        role: formData.role,
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+      );
+      history.push("/app/manage-users");
+    } catch(error){
+      console.log("Error", error);
+    }
   };
+
 
   const handleCancel = () => {
     history.push("/app/manage-users");
   };
+
 
   return (
     <>
@@ -72,16 +89,6 @@ function Addnewusers() {
           />
         </Label>
         <Label className="mt-4">
-          <span>Mobile</span>
-          <Input
-            className="block w-full mt-1"
-            placeholder="1234567890"
-            name="mobile"
-            value={formData.mobile}
-            onChange={handleChange}
-          />
-        </Label>
-        <Label className="mt-4">
           <span>Role</span>
           <Select
             className="block w-full mt-1"
@@ -92,8 +99,8 @@ function Addnewusers() {
             <option value="">Select</option>
             <option value="1">Admin</option>
             <option value="2">Faculty</option>
-            <option value="3">Security</option>
-            <option value="4">Parents</option>
+            <option value="3">Parents</option>
+            <option value="4">Security</option>
           </Select>
         </Label>
 

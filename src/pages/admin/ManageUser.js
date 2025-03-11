@@ -24,26 +24,27 @@ import {
 import { Label } from "@windmill/react-ui";
 import { CiCirclePlus } from "react-icons/ci";
 import { Link, useHistory } from "react-router-dom";
+import axios from "axios";
 
 const users = [
   {
     user_id: "F1001",
     user_name: "Dr. John Doe",
     email: "poovarasan.cs@bitsathy.ac.in",
-    mobile:"1234567890",
+    mobile: "1234567890",
     role: "1",
   },
   {
     user_id: "F1002",
     user_name: "Dr. Jane Doe",
     email: "praveenkumar.cs21@bitsathy.ac.in",
-    mobile:"1234567890",
+    mobile: "1234567890",
     role: "2",
-  }
+  },
 ];
 
 function UsersTable() {
-  const [usersdata, setUsers] = useState(users);
+  const [usersdata, setUsers] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -51,7 +52,26 @@ function UsersTable() {
   const [rowDataToEdit, setRowDataToEdit] = useState(null);
   const [editedData, setEditedData] = useState({});
   const history = useHistory();
+  const token = localStorage.getItem("token");
 
+  useEffect(() => {
+    const fetchusers = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:8080/protected/getusers",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setUsers(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchusers();
+  }, []);
   const resultsPerPage = 8;
   const totalResults = usersdata.length;
 
@@ -59,22 +79,16 @@ function UsersTable() {
 
   useEffect(() => {
     setFilteredData(
-        usersdata.filter(
+      usersdata.filter(
         (request) =>
           (request.user_id &&
-            request.user_id
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
+            request.user_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (request.user_name &&
             request.user_name
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
           (request.email &&
-            request.email
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()))  ||
-              (request.mobile &&
-                request.mobile.toLowerCase().includes(searchTerm.toLowerCase()))||
+            request.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (request.role &&
             request.role.toLowerCase().includes(searchTerm.toLowerCase()))
       )
@@ -108,12 +122,6 @@ function UsersTable() {
     setUsers(updatedRequests);
     closeDeleteModal();
   }
-
-  const handleUpdate = async () => {
-    console.log("Updated");
-    setIsEditModalOpen(false);
-  };
-
   function handlePageChange(p) {
     setPage(p);
   }
@@ -121,6 +129,40 @@ function UsersTable() {
   function handleSearchTermChange(event) {
     setSearchTerm(event.target.value);
   }
+
+  const handleUpdate = async () => {
+    if (!rowDataToEdit) return;
+
+    try {
+      const updatedRole = editedData.role || rowDataToEdit.role; // Ensure role is taken from editedData
+
+      const response = await axios.put(
+        "http://localhost:8080/protected/updateusers",
+        {
+          user_id: rowDataToEdit.user_id,
+          role: updatedRole, // Send the updated role
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        const updatedUsers = usersdata.map((user) =>
+          user.user_id === rowDataToEdit.user_id
+            ? { ...user, role: updatedRole } // Update role properly
+            : user
+        );
+
+        setUsers(updatedUsers);
+        setIsEditModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Error updating user role:", error);
+    }
+  };
 
   return (
     <>
@@ -151,7 +193,6 @@ function UsersTable() {
               <TableCell>User ID</TableCell>
               <TableCell>User Name</TableCell>
               <TableCell>Email</TableCell>
-              <TableCell>Mobile</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Actions</TableCell>
             </tr>
@@ -165,13 +206,12 @@ function UsersTable() {
                   <TableCell>{request.user_id}</TableCell>
                   <TableCell>{request.user_name}</TableCell>
                   <TableCell>{request.email}</TableCell>
-                  <TableCell>{request.mobile}</TableCell>
                   <TableCell>
                     {request.role === "1" ? (
                       <span>Admin</span>
                     ) : request.role === "2" ? (
                       <span>Faculty</span>
-                    ) :request.role === "3" ? (
+                    ) : request.role === "4" ? (
                       <span>Security</span>
                     ) : (
                       <span>Parents</span>
@@ -226,8 +266,8 @@ function UsersTable() {
           >
             <option value="1">Admin</option>
             <option value="2">Faculty</option>
-            <option value="3">Security</option>
-            <option value="4">Parents</option>
+            <option value="3">Parents</option>
+            <option value="4">Security</option>
           </Select>
         </ModalBody>
         <ModalFooter>

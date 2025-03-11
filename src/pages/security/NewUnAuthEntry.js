@@ -9,10 +9,46 @@ function ProjectRequestForm() {
     parent_name: "",
     student_rollno: "",
     student_name: "",
-    entry: "",
-    visit_purpose: "",
+    purpose: "",
   });
   const history = useHistory();
+
+  const handleFileChange = async (e) => {
+    const { name, files } = e.target;
+    const file = files[0];
+    const token = localStorage.getItem("token");
+    if (file) {
+      const formData = new FormData();
+      formData.append("UploadFiles", file);
+      try {
+        const uploadResponse = await fetch(
+          "http://localhost:8080/protected/uploadpdf",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        const uploadData = await uploadResponse.json();
+
+        const { filename } = uploadData;
+        console.log(filename);
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: filename,
+        }));
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,23 +58,39 @@ function ProjectRequestForm() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    const file = files[0];
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: file,
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log(formData);
-    history.push("/app/manage-visit-request");
+    try {
+      const response = await fetch(
+        "http://localhost:8080/protected/addunauthentry",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            parent_id: formData.parent_id,
+            parent_name: formData.parent_name,
+            student_rollno: formData.student_rollno,
+            student_name: formData.student_name,
+            purpose: formData.purpose,
+            id_proof: formData.id_proof,
+          }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to submit the form");
+      }
+      history.push("/app/manage-unauth-entry");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const handleCancel = () => {
-    history.push("/app/manage-visit-request");
+    history.push("/app/manage-unauth-entry");
   };
 
   return (
@@ -90,22 +142,11 @@ function ProjectRequestForm() {
         </Label>
 
         <Label className="mt-4">
-          <span>Entry Type</span>
-          <Input
-            placeholder="Unscheduled Entry"
-            className="block w-full mt-1"
-            name="entry"
-            value={formData.entry}
-            onChange={handleChange}
-          />
-        </Label>
-
-        <Label className="mt-4">
           <span>Visit Purpose</span>
           <Input
             className="block w-full mt-1"
-            name="visit_purpose"
-            value={formData.visit_purpose}
+            name="purpose"
+            value={formData.purpose}
             onChange={handleChange}
           />
         </Label>

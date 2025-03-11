@@ -7,12 +7,50 @@ function ProjectRequestForm() {
   const [formData, setFormData] = useState({
     parent_id: "",
     parent_name: "",
+    parent_email:"",
     student_rollno: "",
     student_name: "",
     booked_time: "",
     visit_purpose: "",
+    id_proof: null,
   });
   const history = useHistory();
+  const handleFileChange = async (e) => {
+    const { name, files } = e.target;
+    const file = files[0];
+    const token = localStorage.getItem("token");
+    if (file) {
+      const formData = new FormData();
+      formData.append("UploadFiles", file);
+      try {
+        const uploadResponse = await fetch(
+          "http://localhost:8080/protected/uploadpdf",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        const uploadData = await uploadResponse.json();
+
+        const { filename } = uploadData;
+        console.log(filename);
+        setFormData((prevData) => ({
+          ...prevData,
+          [name]: filename,
+        }));
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,19 +60,36 @@ function ProjectRequestForm() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    const file = files[0];
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: file,
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log(formData);
-    history.push("/app/manage-visit-request");
+    try {
+      const response = await fetch("http://localhost:8080/protected/addappointments",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            parent_id: formData.parent_id,
+            parent_name: formData.parent_name,
+            parent_email: formData.parent_email,
+            student_rollno: formData.student_rollno,
+            student_name: formData.student_name,
+            booked_time: formData.booked_time,
+            purpose: formData.visit_purpose,
+            id_proof: formData.UploadFiles,
+          }),
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to store form data");
+      }
+      history.push("/app/manage-visit-request");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const handleCancel = () => {
@@ -63,6 +118,16 @@ function ProjectRequestForm() {
             className="block w-full mt-1"
             name="parent_name"
             value={formData.parent_name}
+            onChange={handleChange}
+          />
+        </Label>
+        <Label className="mt-4">
+          <span>Parent Email</span>
+          <Input
+            placeholder="JohnDoe@gmail.com"
+            className="block w-full mt-1"
+            name="parent_email"
+            value={formData.parent_email}
             onChange={handleChange}
           />
         </Label>
@@ -116,7 +181,7 @@ function ProjectRequestForm() {
           <Input
             className="block w-full mt-1"
             type="file"
-            name="id_proof"
+            name="UploadFiles"
             onChange={handleFileChange}
           />
         </Label>

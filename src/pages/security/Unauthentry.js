@@ -21,29 +21,10 @@ import { CiCirclePlus } from "react-icons/ci";
 import { Link, useHistory } from "react-router-dom";
 import { CSVLink } from "react-csv";
 import { FaDownload } from "react-icons/fa6";
-
-const visitrequestdata = [
-  {
-    parent_id: "PA101",
-    parent_name: "John Doe",
-    parent_email: "parent@gmail.com",
-    parent_contact: "1234567890",
-    id_proof: "Aadhar",
-    student_rollno: "123456",
-    student_name: "Jane Doe",
-    student_email: "student@gmail.com",
-    student_contact: "1234567890",
-    student_department: "CSE",
-    student_year: "4",
-    mentor_id: "M101",
-    mentor_name: "Mentor",
-    visit_purpose: "Emergency Meeting",
-    visit_status: "0",
-  },
-];
+import axios from "axios";
 
 function VisitRequestTable() {
-  const [visitrequest, setVisitRequestdata] = useState(visitrequestdata);
+  const [visitrequest, setVisitRequestdata] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -51,39 +32,93 @@ function VisitRequestTable() {
   const [rowDataToEdit, setRowDataToEdit] = useState(null);
   const history = useHistory();
   const resultsPerPage = 8;
-  const totalResults = visitrequest.length;
+  const totalResults = visitrequest.length || 0;
 
   const [page, setPage] = useState(1);
 
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+
+  let url = "";
+
+  if (role === "2") {
+    url = "http://localhost:8080/protected/getmentorwiseunauthentry";
+  } else {
+    url = "http://localhost:8080/protected/getunauthentry";
+  }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (role === "2") {
+          const response = await axios.post(
+            url,
+            {
+              mentor_id: localStorage.getItem("userid"),
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          if (response.data !== null) {
+            setVisitRequestdata(response.data);
+          } else {
+            setVisitRequestdata([]);
+          }
+        } else {
+          const response = await axios.get(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.data !== null) {
+            setVisitRequestdata(response.data);
+          } else {
+            setVisitRequestdata([]);
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchData();
+  }, []);
+
   const headers = [
+    { label: "Request ID", key: "req_id" },
     { label: "Parent ID", key: "parent_id" },
     { label: "Parent Name", key: "parent_name" },
     { label: "Parent Email", key: "parent_email" },
     { label: "Parent Contact", key: "parent_contact" },
-    { label: "ID Proof", key: "id_proof" },
     { label: "Student Rollno", key: "student_rollno" },
     { label: "Student Name", key: "student_name" },
-    { label: "Student Email", key: "student_email" },
-    { label: "Student Contact", key: "student_contact" },
-    { label: "Student Department", key: "student_department" },
-    { label: "Year", key: "student_year" },
+    { label: "Student Email", key: "email" },
+    { label: "Student Department", key: "department" },
+    { label: "Year", key: "year" },
     { label: "Mentor ID", key: "mentor_id" },
     { label: "Mentor Name", key: "mentor_name" },
-    { label: "Visit Purpose", key: "visit_purpose" },
-    { label: "Status", key: "visit_status" },
+    { label: "Mentor Name", key: "mentor_email" },
+    { label: "Visit Purpose", key: "purpose" },
+    { label: "ID Proof", key: "id_proof" },
+    { label: "Check In Time", key: "check_in" },
+    { label: "Check Out Time", key: "check_out" },
   ];
 
   useEffect(() => {
     setFilteredData(
       visitrequest.filter((request) => {
         const statusText =
-          request.visit_status === "1"
+          request.status === "1"
             ? "Approved"
-            : request.visit_status === "2"
+            : request.status === "2"
             ? "Rejected"
             : "Pending";
 
         return (
+          (request.req_id &&
+            request.req_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (request.parent_id &&
             request.parent_id
               .toLowerCase()
@@ -108,20 +143,15 @@ function VisitRequestTable() {
             request.student_name
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
-          (request.student_email &&
-            request.student_email
+          (request.email &&
+            request.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (request.year && // ✅ Convert year to string before using toLowerCase()
+            request.year
+              .toString()
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
-          (request.student_contact &&
-            request.student_contact
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
-          (request.student_department &&
-            request.student_department
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
-          (request.student_year &&
-            request.student_year
+          (request.department &&
+            request.department
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
           (request.mentor_id &&
@@ -132,8 +162,22 @@ function VisitRequestTable() {
             request.mentor_name
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
-          (request.visit_purpose &&
-            request.visit_purpose
+          (request.mentor_email &&
+            request.mentor_email
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (request.booked_time &&
+            request.booked_time
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (request.purpose &&
+            request.purpose.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (request.check_out &&
+            request.check_out
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (request.check_in &&
+            request.check_in
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
           statusText.toLowerCase().includes(searchTerm.toLowerCase())
@@ -141,7 +185,6 @@ function VisitRequestTable() {
       })
     );
   }, [searchTerm, visitrequest]);
-
   function openViewModal(rowData) {
     setRowDataToEdit(rowData);
     setIsViewModalOpen(true);
@@ -174,8 +217,43 @@ function VisitRequestTable() {
     setSearchTerm(event.target.value);
   }
 
-  const handleRequestApproval = async (req_id, status) => {
-    console.log(req_id, status);
+  const handlecheckin = async (req_id, status) => {
+    try {
+      const response = await axios.put(
+        "http://localhost:8080/protected/handleunauthcheckin",
+        {
+          req_id: req_id,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setIsViewModalOpen(false);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handlecheckout = async (req_id, status) => {
+    try {
+      const response = await axios.put(
+        "http://localhost:8080/protected/handleunauthcheckout",
+        {
+          req_id: req_id,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setIsViewModalOpen(false);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -192,19 +270,23 @@ function VisitRequestTable() {
             />
           </div>
           <div className="flex flex-row">
-            <Button onClick={handleAddnew}>
-              <CiCirclePlus size={24} className="mr-2 font-bold" />
-              Add New
-            </Button>
-            <CSVLink
-              data={filteredData}
-              headers={headers}
-              filename="unauthorized_visit_requests.csv"
-            >
-              <Button size="large" className="ml-4">
-                <FaDownload size={20} className="mr-2" /> Export
+            {role === "4" && (
+              <Button onClick={handleAddnew}>
+                <CiCirclePlus size={24} className="mr-2 font-bold" />
+                Add New
               </Button>
-            </CSVLink>
+            )}
+            {(role === "1" || role === "2" || role === "4") && (
+              <CSVLink
+                data={filteredData}
+                headers={headers}
+                filename="unauthorized_visit_requests.csv"
+              >
+                <Button size="large" className="ml-4">
+                  <FaDownload size={20} className="mr-2" /> Export
+                </Button>
+              </CSVLink>
+            )}
           </div>
         </div>
         <hr className="border-t-1 w-full" />
@@ -213,21 +295,23 @@ function VisitRequestTable() {
           <TableHeader>
             <tr>
               <TableCell>S No</TableCell>
-              <TableCell>User ID</TableCell>
-              <TableCell>User Name</TableCell>
+              <TableCell>Request ID</TableCell>
+              <TableCell>Parent ID</TableCell>
+              <TableCell>Parent Name</TableCell>
               <TableCell>Parent Email</TableCell>
               <TableCell>Parent Contact</TableCell>
-              <TableCell>ID Proof</TableCell>
               <TableCell>Student Rollno</TableCell>
               <TableCell>Student Name</TableCell>
               <TableCell>Student Email</TableCell>
-              <TableCell>Student Contact</TableCell>
               <TableCell>Student Department</TableCell>
               <TableCell>Year</TableCell>
               <TableCell>Mentor ID</TableCell>
               <TableCell>Mentor Name</TableCell>
+              <TableCell>Mentor Email</TableCell>
               <TableCell>Visit Purpose</TableCell>
-              <TableCell>Visit Status</TableCell>
+              <TableCell>ID Proof</TableCell>
+              <TableCell>Check IN</TableCell>
+              <TableCell>Check Out</TableCell>
               <TableCell>Actions</TableCell>
             </tr>
           </TableHeader>
@@ -237,29 +321,23 @@ function VisitRequestTable() {
               .map((request, index) => (
                 <TableRow key={index + 1}>
                   <TableCell>{index + 1}</TableCell>
+                  <TableCell>{request.req_id}</TableCell>
                   <TableCell>{request.parent_id}</TableCell>
                   <TableCell>{request.parent_name}</TableCell>
                   <TableCell>{request.parent_email}</TableCell>
                   <TableCell>{request.parent_contact}</TableCell>
-                  <TableCell>{request.id_proof}</TableCell>
                   <TableCell>{request.student_rollno}</TableCell>
                   <TableCell>{request.student_name}</TableCell>
-                  <TableCell>{request.student_email}</TableCell>
-                  <TableCell>{request.student_contact}</TableCell>
-                  <TableCell>{request.student_department}</TableCell>
-                  <TableCell>{request.student_year}</TableCell>
+                  <TableCell>{request.email}</TableCell>
+                  <TableCell>{request.department}</TableCell>
+                  <TableCell>{request.year} Year</TableCell>
                   <TableCell>{request.mentor_id}</TableCell>
                   <TableCell>{request.mentor_name}</TableCell>
-                  <TableCell>{request.visit_purpose}</TableCell>
-                  <TableCell>
-                    {request.visit_status === "1" ? (
-                      <Badge type="success">Approved</Badge>
-                    ) : request.visit_status === "2" ? (
-                      <Badge type="danger">Rejected</Badge>
-                    ) : (
-                      <Badge type="warning">Pending</Badge>
-                    )}
-                  </TableCell>
+                  <TableCell>{request.mentor_email}</TableCell>
+                  <TableCell>{request.purpose}</TableCell>
+                  <TableCell>{request.id_proof}</TableCell>
+                  <TableCell>{request.check_in}</TableCell>
+                  <TableCell>{request.check_out}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-4">
                       <Button
@@ -270,17 +348,6 @@ function VisitRequestTable() {
                       >
                         <IoMdEye className="w-5 h-5" />
                       </Button>
-
-                      <>
-                        <Button
-                          layout="link"
-                          size="icon"
-                          aria-label="Delete"
-                          onClick={() => openDeleteModal(request)}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </Button>
-                      </>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -308,10 +375,14 @@ function VisitRequestTable() {
         </ModalFooter>
       </Modal>
 
-      {/* View Modal */}
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)}>
-        <ModalHeader>View Request Details</ModalHeader>
+        <ModalHeader>View Slot Details</ModalHeader>
         <ModalBody>
+          {/* Display request details */}
+          <div className="flex flex-row">
+            <p className="text-sm font-medium">Request ID: </p>
+            <p className="ml-2">{rowDataToEdit?.req_id}</p>
+          </div>
           <div className="flex flex-row">
             <p className="text-sm font-medium">Parent ID: </p>
             <p className="ml-2">{rowDataToEdit?.parent_id}</p>
@@ -328,10 +399,7 @@ function VisitRequestTable() {
             <p className="text-sm font-medium">Parent Contact: </p>
             <p className="ml-2">{rowDataToEdit?.parent_contact}</p>
           </div>
-          <div className="flex flex-row">
-            <p className="text-sm font-medium">ID Proof: </p>
-            <p className="ml-2">{rowDataToEdit?.id_proof}</p>
-          </div>
+
           <div className="flex flex-row">
             <p className="text-sm font-medium">Student Rollno: </p>
             <p className="ml-2">{rowDataToEdit?.student_rollno}</p>
@@ -342,19 +410,15 @@ function VisitRequestTable() {
           </div>
           <div className="flex flex-row">
             <p className="text-sm font-medium">Student Email: </p>
-            <p className="ml-2">{rowDataToEdit?.student_email}</p>
-          </div>
-          <div className="flex flex-row">
-            <p className="text-sm font-medium mr-2">Student Contact: </p>
-            <p className="ml-2">{rowDataToEdit?.student_contact}</p>
+            <p className="ml-2">{rowDataToEdit?.email}</p>
           </div>
           <div className="flex flex-row">
             <p className="text-sm font-medium">Department: </p>
-            <p className="ml-2">{rowDataToEdit?.student_department}</p>
+            <p className="ml-2">{rowDataToEdit?.department}</p>
           </div>
           <div className="flex flex-row">
             <p className="text-sm font-medium">Student Year: </p>
-            <p className="ml-2">{rowDataToEdit?.student_year}</p>
+            <p className="ml-2">{rowDataToEdit?.year} Year</p>
           </div>
 
           <div className="flex flex-row">
@@ -367,39 +431,53 @@ function VisitRequestTable() {
             <p className="ml-2">{rowDataToEdit?.mentor_name}</p>
           </div>
           <div className="flex flex-row">
-            <p className="text-sm font-medium">Visit Purpose: </p>
-            <p className="ml-2">{rowDataToEdit?.visit_purpose}</p>
+            <p className="text-sm font-medium">Mentor Email: </p>
+            <p className="ml-2">{rowDataToEdit?.mentor_email}</p>
           </div>
           <div className="flex flex-row">
-            <p className="text-sm font-medium">Status: </p>
-            <p className="ml-2">
-              {rowDataToEdit?.visit_status === "1" ? (
-                <Badge type="success">Approved</Badge>
-              ) : rowDataToEdit?.status === "2" ? (
-                <Badge type="danger">Rejected</Badge>
-              ) : (
-                <Badge type="warning">Pending</Badge>
-              )}
-            </p>
+            <p className="text-sm font-medium">Visit Purpose: </p>
+            <p className="ml-2">{rowDataToEdit?.purpose}</p>
+          </div>
+          <div className="flex flex-row">
+            <p className="text-sm font-medium">ID Proof: </p>
+            {rowDataToEdit?.id_proof && (
+              <a
+                href={`http://localhost:8080/servepdf/${rowDataToEdit.id_proof}`}
+                target="_blank"
+                className="ml-2 text-blue-500 underline"
+              >
+                View ID Proof
+              </a>
+            )}
+          </div>
+          <div className="flex flex-row">
+            <p className="text-sm font-medium">Check IN Time: </p>
+            <p className="ml-2">{rowDataToEdit?.check_in}</p>
+          </div>
+          <div className="flex flex-row">
+            <p className="text-sm font-medium">Check Out Time: </p>
+            <p className="ml-2">{rowDataToEdit?.check_out}</p>
           </div>
         </ModalBody>
         <ModalFooter>
-          <>
-            <Button
-              layout="link"
-              className="bg-indigo-600 text-white hover:bg-indigo-700"
-              onClick={() => handleRequestApproval(rowDataToEdit.req_id, "1")}
-            >
-              <p className="text-white">Approve</p>
-            </Button>
-            <Button
-              layout="link"
-              className="bg-red-600 text-white hover:bg-red-700"
-              onClick={() => handleRequestApproval(rowDataToEdit.req_id, "2")}
-            >
-              <p className="text-white">Reject</p>
-            </Button>
-          </>
+          {role==="4" && (
+            <>
+              <Button
+                layout="link"
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+                onClick={() => handlecheckin(rowDataToEdit.req_id, "1")}
+              >
+                <p className="text-white">Check In</p>
+              </Button>
+              <Button
+                layout="link"
+                className="bg-red-600 text-white hover:bg-red-700"
+                onClick={() => handlecheckout(rowDataToEdit.req_id, "2")}
+              >
+                <p className="text-white">Check Out</p>
+              </Button>
+            </>
+          )}
 
           <Button
             layout="link"
